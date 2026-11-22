@@ -1,14 +1,13 @@
-"""Latar belakang, dataset, metode, keterbatasan, tim."""
 from pathlib import Path
 
 import streamlit as st
 
 from src.business import CLASS_INFO
-from src.ui import device_switcher, footer, is_mobile, stat_grid
+from src.ui import footer, is_mobile, stat_grid
 
 FIG = Path(__file__).resolve().parent.parent / "assets" / "figures"
+OK = ":green[:material/check_circle:]"
 
-# Anggota tim (urutan sesuai daftar tim)
 TEAM = [
     "Qalam Raydathul Sabani",
     "Christian Toga Raja Pasaribu",
@@ -17,10 +16,10 @@ TEAM = [
     "Grace Magaretha Sirait",
 ]
 
-device_switcher()
-st.title("ℹ️ Tentang")
+st.title("Tentang", icon=":material/info:")
 
-tabs = st.tabs(["🎯 Masalah", "🗃️ Dataset", "🧠 Metode", "⚠️ Keterbatasan", "👥 Tim"])
+tabs = st.tabs([":material/target: Masalah", ":material/database: Dataset", ":material/psychology: Metode",
+                ":material/warning: Keterbatasan", ":material/groups: Tim"])
 
 with tabs[0]:
     st.subheader("Latar belakang")
@@ -34,20 +33,19 @@ with tabs[0]:
         "memakainya sebagai **alat triase** (human-in-the-loop): kasus yang jelas diputus otomatis, kasus ragu "
         "diteruskan ke petugas."
     )
-    cards = "".join(
-        f'<div class="stat" style="border-top:4px solid {inf["color"]}">'
-        f'<div class="v">{inf["emoji"]} {c}</div><div style="margin:.3rem 0">{inf["arti"]}</div>'
-        f'<div class="s">Tindakan: {inf["aksi"]}</div></div>'
-        for c, inf in CLASS_INFO.items())
-    st.markdown(f'<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">{cards}</div>',
-                unsafe_allow_html=True)
+    with st.grid(3, min_column_width=200):
+        for c, inf in CLASS_INFO.items():
+            with st.container(border=True, height="stretch"):
+                st.markdown(f"#### :{inf['md']}[{inf['icon']} {c}]")
+                st.write(inf["arti"])
+                st.caption(f"Tindakan: {inf['aksi']}")
     st.subheader("Target (KPI)")
     st.markdown(
         "| KPI | Target | Hasil |\n|---|---|---|\n"
-        "| Macro F1 test | ≥ 0,80 | **0,801 ± 0,012** ✅ (rata-rata 3 seed) |\n"
-        "| Latensi per foto | < 100 ms | **±7 ms** (GPU), ±15 ms (CPU) ✅ |\n"
+        f"| Macro F1 test | ≥ 0,80 | **0,801 ± 0,012** {OK} (rata-rata 3 seed) |\n"
+        f"| Latensi per foto | < 100 ms | **±7 ms** (GPU), ±15 ms (CPU) {OK} |\n"
         "| Klaim otomatis dengan akurasi ≥ 95% | sebesar mungkin | **37%** |\n"
-        "| Biaya per klaim | < manual (Rp 5.000) | **Rp 4.605** pada threshold 0,94 ✅ |"
+        f"| Biaya per klaim | < manual (Rp 5.000) | **Rp 4.605** pada threshold 0,94 {OK} |"
     )
 
 with tabs[1]:
@@ -59,7 +57,8 @@ with tabs[1]:
         ("Rasio imbalance", "21 : 1", "Aman : Lainnya"),
     ])
     st.image(str(FIG / "class_distribution.jpg"), caption="Distribusi kelas: sangat tidak seimbang (21:1)",
-             width="stretch" if is_mobile() else 520)
+             width="stretch" if is_mobile() else 520,
+             alt="Distribusi kelas: Aman 8.773, Rusak 2.975, Lainnya 423 gambar")
     st.markdown(
         "**Temuan audit data**\n"
         "- **Ketidakseimbangan kelas**: Lainnya hanya 3,5%, sehingga dipakai *class-weighted loss* dan metrik macro F1.\n"
@@ -69,9 +68,9 @@ with tabs[1]:
         "Diatasi dengan augmentasi downscale & noise pada semua kelas.\n"
         "- **Label noise**: banyak foto stok hasil scraping yang labelnya keliru."
     )
-    with st.expander("Contoh gambar per kelas"):
+    with st.expander("Contoh gambar per kelas", icon=":material/image:"):
         for name in ["aman", "rusak", "lainnya"]:
-            st.image(str(FIG / f"samples_{name}.jpg"), width="stretch")
+            st.image(str(FIG / f"samples_{name}.jpg"), width="stretch", alt=f"Contoh 12 gambar kelas {name.title()}")
     st.markdown("**Split**: train / val / test = 70 / 15 / 15 (8.481 / 1.636 / 1.707), stratified & group-aware.")
 
 with tabs[2]:
@@ -97,8 +96,8 @@ with tabs[2]:
         "**Augmentasi**: random resized crop, flip, rotasi ±10°, color jitter, kompresi JPEG acak, ditambah "
         "downscale & noise acak untuk mitigasi jalan pintas."
     )
-    with st.expander("Contoh augmentasi"):
-        st.image(str(FIG / "augmentation.jpg"), width="stretch")
+    with st.expander("Contoh augmentasi", icon=":material/auto_awesome:"):
+        st.image(str(FIG / "augmentation.jpg"), width="stretch", alt="Satu foto dengan 14 variasi augmentasi")
 
 with tabs[3]:
     st.subheader("Keterbatasan")
@@ -121,10 +120,10 @@ with tabs[3]:
 
 with tabs[4]:
     st.subheader("Tim pengembang")
-    cards = "".join(
-        f'<div class="member"><div class="av">{"".join(w[0] for w in n.split()[:2])}</div><div class="nm">{n}</div></div>'
-        for n in TEAM)
-    st.markdown(f'<div class="team">{cards}</div>', unsafe_allow_html=True)
+    with st.grid("auto", min_column_width=220):
+        for nama in TEAM:
+            with st.container(border=True):
+                st.markdown(f":material/person: **{nama}**")
     st.caption("Mata kuliah Deep Learning · Tugas Besar")
 
 footer()
