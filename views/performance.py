@@ -1,4 +1,3 @@
-"""Hasil evaluasi model di test set (angka & grafik dari notebook)."""
 from pathlib import Path
 
 import pandas as pd
@@ -8,26 +7,28 @@ import streamlit as st
 
 from src import metrics_data as md
 from src.business import CLAIMS_PER_DAY, COST_MATRIX, MANUAL_REVIEW_COST
-from src.ui import device_switcher, footer, is_mobile, stat_grid
+from src.ui import chart, footer, is_mobile, stat_grid
 
 FIG = Path(__file__).resolve().parent.parent / "assets" / "figures"
 CLASSES = ["Aman", "Rusak", "Lainnya"]
 mobile = is_mobile()
-CFG = {"displayModeBar": False, "staticPlot": mobile}
 
 
 def rp(x: float) -> str:
-    return "Rp " + f"{x:,.0f}".replace(",", ".")
+    return "Rp " + f"{x:,.0f}".replace(",", ".")
 
 
 def fig_img(name: str, caption: str):
     p = FIG / name
     if p.exists():
-        st.image(str(p), caption=caption, width="stretch")
+        st.image(str(p), caption=caption, width="stretch", alt=caption)
 
 
-device_switcher()
-st.title("📊 Performa Model")
+def table(df: pd.DataFrame, alt: str, hide_index: bool = True):
+    st.table(df, hide_index=hide_index, alt=alt)
+
+
+st.title("Performa model", icon=":material/monitoring:")
 st.caption("Semua angka berasal dari evaluasi di **test set (1.707 gambar)** yang tidak pernah dipakai saat training "
            "maupun tuning. Model yang di-deploy: MobileNetV3-Large seed 42 (macro F1 test 0,814).")
 
@@ -38,14 +39,16 @@ stat_grid([
     ("Latensi", "±7 ms", "target < 100 ms"),
 ])
 
-tabs = st.tabs(["🏆 Model", "🎯 Kelas", "💰 Bisnis", "🧪 Ablasi", "🔥 Interpretasi"] if mobile else
-               ["🏆 Perbandingan", "🎯 Per kelas", "💰 Dampak bisnis", "🧪 Eksperimen", "🔥 Interpretasi"])
+TAB_ICONS = [":material/trophy:", ":material/target:", ":material/payments:", ":material/science:",
+             ":material/local_fire_department:"]
+TAB_NAMES = (["Model", "Kelas", "Bisnis", "Ablasi", "Interpretasi"] if mobile else
+             ["Perbandingan", "Per kelas", "Dampak bisnis", "Eksperimen", "Interpretasi"])
+tabs = st.tabs([f"{i} {n}" for i, n in zip(TAB_ICONS, TAB_NAMES)])
 
-# ---------------------------------------------------------------- perbandingan
 with tabs[0]:
     st.subheader("Baseline vs CNN sederhana vs transfer learning")
     t4 = md.TABLE4[["Model", "Macro F1", "Akurasi"]].assign(Model=["M0 Baseline", "M1 CNN", "M2 MobileNetV3 ✅"]) if mobile else md.TABLE4
-    st.dataframe(t4, hide_index=True, width="stretch")
+    table(t4, alt="Perbandingan M0, M1, dan M2 di test set; M2 unggul di semua metrik")
     b = md.MACRO_F1_BARS
     fig = go.Figure(go.Bar(x=b.model, y=b["mean"], error_y=dict(type="data", array=b["std"]),
                            marker_color=["#8d8d8d", "#eb6834", "#2a78d6"],
@@ -54,7 +57,7 @@ with tabs[0]:
     fig.add_hline(y=0.80, line_dash="dot", line_color="#1baf7a", annotation_text="target KPI 0,80")
     fig.update_layout(height=280 if mobile else 340, yaxis=dict(range=[0, 1], title="Macro F1 (test)"),
                       margin=dict(l=0, r=0, t=20, b=0))
-    st.plotly_chart(fig, width="stretch", config=CFG)
+    chart(fig, alt="Macro F1 test: M0 0,491, M1 0,569, M2 0,801; hanya M2 melewati target 0,80")
     st.markdown(
         "- **Transfer learning adalah kunci**: M2 unggul +0,23 macro F1 dari CNN sederhana, jauh di atas variasi antar-seed.\n"
         "- Seed terburuk M2 (0,791) masih jauh di atas seed terbaik M1 (0,606).\n"
@@ -63,13 +66,13 @@ with tabs[0]:
     with st.expander("Kurva training M2 (rerata ± std 3 seed)"):
         fig_img("seed_curves_m2.jpg", "Garis putus-putus = akhir tahap 1 (hanya head) → mulai fine-tuning penuh")
 
-# ---------------------------------------------------------------- per kelas
 with tabs[1]:
     c1, c2 = (st.container(), st.container()) if mobile else st.columns([1, 1.1], gap="large")
     with c1:
         st.subheader("Classification report")
-        st.dataframe(md.CLASS_REPORT.style.format({"Precision": "{:.3f}", "Recall": "{:.3f}", "F1": "{:.3f}"}),
-                     hide_index=True, width="stretch")
+        table(md.CLASS_REPORT.assign(**{c: md.CLASS_REPORT[c].map("{:.3f}".format)
+                                        for c in ["Precision", "Recall", "F1"]}),
+              alt="Precision, recall, dan F1 per kelas untuk model M2")
         st.markdown(
             "- **Aman** paling mudah (kelas mayoritas).\n"
             "- **Lainnya** jarang tertukar (recall 0,87) meski datanya hanya 3,5%.\n"
@@ -87,15 +90,14 @@ with tabs[1]:
         fig.update_layout(height=300 if mobile else 360, margin=dict(l=0, r=0, t=10, b=0),
                           xaxis=dict(title="Prediksi", side="bottom"),
                           yaxis=dict(title="Label sebenarnya", autorange="reversed"))
-        st.plotly_chart(fig, width="stretch", config=CFG)
+        chart(fig, alt="Confusion matrix M2: kesalahan terbanyak Rusak diprediksi Aman (127 foto)")
 
-# ---------------------------------------------------------------- bisnis
 with tabs[2]:
     st.subheader("Human-in-the-loop: berapa klaim yang bisa diotomasi?")
     fig_img("automation_curve.jpg",
             "Makin tinggi threshold: makin sedikit klaim otomatis, tetapi makin akurat. Garis merah = biaya minimum.")
 
-    st.markdown("#### Simulasi biaya")
+    st.subheader(":material/calculate: Simulasi biaya")
     claims = st.number_input("Jumlah klaim per hari", 100, 100_000, CLAIMS_PER_DAY, 100)
     op = md.OPERATING_POINTS.copy()
     op["Klaim otomatis"] = op.coverage.map(lambda v: f"{v:.1%}")
@@ -107,8 +109,8 @@ with tabs[2]:
                ["skenario", "threshold", "Klaim otomatis", "Akurasi otomatis", "Beban CS / hari", "Biaya / klaim", "Biaya / bulan"])
     if mobile:
         op["skenario"] = ["Manual 100%", "Otomasi penuh", "Threshold 0,90", "Threshold 0,94"]
-    st.dataframe(op[op_cols].rename(columns={"skenario": "Skenario", "threshold": "Threshold"}),
-                 hide_index=True, width="stretch")
+    table(op[op_cols].rename(columns={"skenario": "Skenario", "threshold": "Threshold"}),
+          alt="Simulasi biaya per skenario otomasi")
     st.markdown(
         "- Otomasi penuh justru **lebih mahal** dari manual, karena satu kesalahan Rusak → Aman (Rp 150.000) "
         "setara 30× biaya review CS.\n"
@@ -119,10 +121,9 @@ with tabs[2]:
     with st.expander("Asumsi matriks biaya (ilustratif)"):
         cmx = pd.DataFrame(COST_MATRIX, index=[f"Sebenarnya {c}" for c in CLASSES],
                            columns=[f"Prediksi {c}" for c in CLASSES]).map(rp)
-        st.dataframe(cmx, width="stretch")
+        table(cmx, alt="Matriks biaya kesalahan ilustratif", hide_index=False)
         st.caption(f"Review manual oleh CS: {rp(MANUAL_REVIEW_COST)} per klaim.")
 
-# ---------------------------------------------------------------- eksperimen
 with tabs[3]:
     st.subheader("Studi ablasi: apa yang membuat M2 unggul?")
     a = md.ABLATION
@@ -130,7 +131,7 @@ with tabs[3]:
                  color=["#e34948"] * 4 + ["#2a78d6"], color_discrete_map="identity")
     fig.update_traces(texttemplate="%{x:.3f}")
     fig.update_layout(height=280 if mobile else 320, xaxis=dict(range=[0, 1]), yaxis_title=None, margin=dict(l=0, r=0, t=10, b=0))
-    st.plotly_chart(fig, width="stretch", config=CFG)
+    chart(fig, alt="Ablasi: tanpa pretrained turun ke 0,566, tanpa fine-tuning 0,681")
     st.markdown(
         "- **Bobot pretrained** paling penting (−0,25). MobileNetV3 yang dilatih dari nol hanya setara CNN sederhana.\n"
         "- **Fine-tuning** backbone menyumbang +0,13.\n"
@@ -142,7 +143,6 @@ with tabs[3]:
     with st.expander("Papan skor seluruh eksperimen"):
         fig_img("scoreboard.jpg", "Semua eksperimen di test set, diurutkan berdasarkan macro F1")
 
-# ---------------------------------------------------------------- interpretasi
 with tabs[4]:
     st.subheader("Ketahanan terhadap kompresi JPEG")
     j = md.JPEG
@@ -151,7 +151,7 @@ with tabs[4]:
     fig.add_scatter(x=j.kualitas, y=j.m1, mode="lines+markers", name="M1 CNN sederhana", line_color="#eb6834")
     fig.update_layout(height=300, yaxis=dict(range=[0, 1], title="Macro F1"), xaxis_title="Kualitas JPEG",
                       margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", y=1.12))
-    st.plotly_chart(fig, width="stretch", config=CFG)
+    chart(fig, alt="Macro F1 M2 stabil di sekitar 0,80 hingga kualitas JPEG 30, turun ke 0,79 di kualitas 15")
     st.caption("Stabil sampai kualitas 30. Di kualitas 15 hanya turun 2,4 poin, jadi aman untuk foto yang dikompres aplikasi chat.")
 
     st.subheader("Grad-CAM")
