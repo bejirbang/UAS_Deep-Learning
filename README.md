@@ -23,7 +23,11 @@ Performa di test set: macro F1 **0,801 ± 0,012** (3 seed), akurasi 0,857. Detai
 - **Performa Model**: perbandingan model, confusion matrix, simulasi biaya, ablasi, ketahanan JPEG, Grad-CAM
 - **Tentang**: masalah bisnis, dataset, metode, keterbatasan, tim
 
-Tampilan responsif: kolom otomatis bertumpuk di HP dan tombol dibuat lebih besar agar mudah disentuh.
+**Tampilan HP / Laptop**: dipilih saat pertama membuka web, bisa diganti lewat tombol di kanan atas, dan
+tersimpan di URL (`?mode=HP` atau `?mode=Laptop`), sehingga link bisa dibagikan dengan tampilan tertentu.
+
+**Tema terang / gelap**: memakai tema bawaan Streamlit (`[theme.light]` dan `[theme.dark]` di
+`.streamlit/config.toml`). Pilih lewat menu ⋮ di kanan atas: System, Light, atau Dark.
 
 ## Struktur
 
@@ -34,11 +38,13 @@ src/model.py            load checkpoint, preprocessing (sama persis dengan noteb
 src/gradcam.py          Grad-CAM
 src/business.py         logika keputusan & matriks biaya
 src/metrics_data.py     angka evaluasi dari notebook
-src/ui.py               CSS responsif, cache model
+src/ui.py               pilihan perangkat, komponen bersama, cache model
+.streamlit/config.toml  tema terang/gelap, padding, batas upload
 models/                 model_terbaik_m2_mobilenetv3.pt (17 MB)
 assets/figures/         grafik dari notebook
 assets/samples/         foto contoh (opsional, muncul di tab "Foto contoh")
 scripts/pack_model.py   mengemas folder checkpoint hasil ekstrak menjadi .pt
+scripts/make_logo.py    membuat ulang assets/logo.png dan assets/logo_icon.png
 tests/test_app.py       tes model + semua halaman
 ```
 
