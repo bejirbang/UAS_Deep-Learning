@@ -1,18 +1,17 @@
-"""Logika keputusan human-in-the-loop (desain notebook 2.3 dan rekomendasi 8.3)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 CLASS_INFO = {
-    "Aman": dict(emoji="📦", color="#1baf7a", arti="Paket terlihat utuh",
+    "Aman": dict(emoji="📦", icon=":material/inventory_2:", md="green", color="#1baf7a", arti="Paket terlihat utuh",
                  aksi="Klaim kemungkinan tidak valid"),
-    "Rusak": dict(emoji="💥", color="#e34948", arti="Paket penyok, sobek, basah, atau hancur",
+    "Rusak": dict(emoji="💥", icon=":material/report:", md="red", color="#e34948", arti="Paket penyok, sobek, basah, atau hancur",
                   aksi="Klaim valid: refund / kirim ulang"),
-    "Lainnya": dict(emoji="🖼️", color="#eda100", arti="Foto bukan paket kiriman (produk, dokumen, gambar lain)",
+    "Lainnya": dict(emoji="🖼️", icon=":material/hide_image:", md="orange", color="#eda100", arti="Foto bukan paket kiriman (produk, dokumen, gambar lain)",
                     aksi="Minta pembeli mengunggah ulang foto"),
 }
 
-# Matriks biaya ilustratif dari notebook 1.4 / 7.3 (baris = sebenarnya, kolom = prediksi), urutan Aman, Rusak, Lainnya
+
 COST_MATRIX = [
     [0, 100_000, 5_000],
     [150_000, 0, 10_000],
@@ -24,10 +23,10 @@ CLAIMS_PER_DAY = 2_000
 
 @dataclass
 class Decision:
-    route: str        # "auto" | "cs" | "reupload"
+    route: str
     title: str
     detail: str
-    priority: str     # "tinggi" | "normal" | "-"
+    priority: str
     color: str
     icon: str
 
