@@ -1,7 +1,3 @@
-"""Tes cepat: model ter-load, prediksi benar pada contoh, dan semua halaman Streamlit berjalan tanpa error.
-
-Jalankan dari root repo:  python tests/test_app.py
-"""
 import io
 import sys
 from pathlib import Path
@@ -9,15 +5,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-from src.business import decide  # noqa: E402
-from src.gradcam import gradcam  # noqa: E402
-from src.model import load_bundle, predict, prepare  # noqa: E402
+from src.business import decide
+from src.gradcam import gradcam
+from src.model import load_bundle, predict, prepare
 
 
 def sample_tiles():
-    """Ambil potongan foto dari grid contoh di notebook (assets/figures/samples_*.jpg)."""
     for name, label in [("aman", "Aman"), ("rusak", "Rusak"), ("lainnya", "Lainnya")]:
         g = Image.open(ROOT / "assets" / "figures" / f"samples_{name}.jpg")
         w, h = g.size
@@ -39,7 +34,6 @@ def test_model():
     assert correct >= 5, f"hanya {correct}/6 contoh benar"
     heat = gradcam(b, p.tensor)
     assert heat.shape == (224, 224) and 0 <= heat.min() and heat.max() <= 1
-    # PNG transparan & gambar sangat kecil tetap bisa diproses
     buf = io.BytesIO(); Image.new("RGBA", (40, 30), (255, 0, 0, 0)).save(buf, "PNG")
     assert prepare(b, buf.getvalue()).low_res
     print(f"model OK ({correct}/6 contoh benar)")
@@ -63,38 +57,38 @@ def test_pages():
             at.query_params["mode"] = mode
         return at
 
-    # kunjungan pertama tanpa ?mode= -> dialog pilihan perangkat muncul, klik "Laptop"
     at = app(None); at.run()
     assert not at.exception, at.exception
-    at.button[1].click().run()
-    assert at.session_state["device"] == "laptop" and not at.exception
+    labels = [b.label for b in at.button]
+    assert "HP" in labels and "Laptop" in labels, f"dialog tidak muncul: {labels}"
+    at.button[labels.index("HP")].click().run()
+    assert at.session_state["mode"] == "HP" and at.session_state["device_confirmed"] and not at.exception
+    at.run()
+    assert "HP" not in [b.label for b in at.button], "dialog masih muncul setelah memilih"
     print("dialog pilihan perangkat OK")
 
     tiles = list(sample_tiles())
     files = [(f"{lab}_{i}.jpg", d, "image/jpeg") for i, (lab, d) in enumerate(tiles)] + [("bukan_gambar.jpg", b"xx", "image/jpeg")]
-    for mode in ["laptop", "hp"]:
+    for mode in ["Laptop", "HP"]:
         for page in ["home", "predict", "batch", "performance", "about"]:
             at = app(mode); at.run()
             if page != "home":
                 at.switch_page(f"views/{page}.py").run()
             assert not at.exception, f"{mode}/{page}: {at.exception}"
+            assert at.session_state["mode"] == mode, f"?mode={mode} di URL diabaikan ({at.session_state['mode']})"
 
-        # halaman prediksi dengan 1 foto (termasuk Grad-CAM)
         at = app(mode); at.run(); at.switch_page("views/predict.py").run()
         at.file_uploader(key="single_upload").set_value(("rusak.jpg", tiles[2][1], "image/jpeg")).run()
         assert not at.exception, at.exception
-        html = " ".join(m.value for m in at.markdown)
-        assert "Hasil prediksi" in html and "Rusak" in html, "kartu hasil tidak muncul"
-        assert len(at.image) >= 2, f"gambar yang tampil: {len(at.image)}"   # foto asli + Grad-CAM
+        assert at.success and "klaim disetujui" in at.success[0].proto.title, "keputusan otomatis tidak muncul"
+        assert len(at.image) >= 2, f"gambar yang tampil: {len(at.image)}"
         at.slider(key="threshold").set_value(0.99).run()
-        assert "Review Customer Service" in " ".join(m.value for m in at.markdown), "threshold tidak berpengaruh"
+        assert at.info and "Review Customer Service" in at.info[0].proto.title, "threshold tidak berpengaruh"
 
-        # halaman batch dengan 6 foto + 1 file rusak
         at = app(mode); at.run(); at.switch_page("views/batch.py").run()
         at.file_uploader(key="batch_upload").set_value(files).run()
         assert not at.exception, at.exception
-        html = " ".join(m.value for m in at.markdown)
-        assert '<div class="l">Total foto</div><div class="v">6</div>' in html, "total foto salah"
+        assert at.metric[0].label == "Total foto" and at.metric[0].value == "6", f"total foto = {at.metric[0].value}"
         assert any("bukan_gambar" in e.value for e in at.error), "file rusak tidak dilaporkan"
         at.slider(key="threshold").set_value(0.5).run()
         assert not at.exception, at.exception
