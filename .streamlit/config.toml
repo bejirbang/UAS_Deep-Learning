@@ -1,10 +1,22 @@
 [theme]
-base = "light"
+font = "sans-serif"
+baseRadius = "medium"
+paddingTop = "1.5rem"
+paddingBottom = "3rem"
+
+[theme.light]
 primaryColor = "#2a78d6"
 backgroundColor = "#ffffff"
 secondaryBackgroundColor = "#f3f6fb"
 textColor = "#1d2433"
-font = "sans serif"
+borderColor = "#dfe5ee"
+
+[theme.dark]
+primaryColor = "#2f7fdc"
+backgroundColor = "#0e1320"
+secondaryBackgroundColor = "#182033"
+textColor = "#e7eaf0"
+borderColor = "#2a3550"
 
 [server]
 maxUploadSize = 20
@@ -13,4 +25,4 @@ maxUploadSize = 20
 gatherUsageStats = false
 
 [client]
-toolbarMode = "minimal"
+toolbarMode = "viewer"
