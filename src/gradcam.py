@@ -1,4 +1,3 @@
-"""Grad-CAM untuk MobileNetV3 (layer target = blok terakhir, sama dengan notebook 7.7)."""
 from __future__ import annotations
 
 import numpy as np
@@ -8,12 +7,10 @@ from PIL import Image
 
 
 def jet(x: np.ndarray) -> np.ndarray:
-    """Colormap 'jet' (biru → hijau → kuning → merah) tanpa matplotlib. x: 0..1 -> H x W x 3."""
     return np.stack([np.clip(1.5 - np.abs(4 * x - k), 0, 1) for k in (3, 2, 1)], axis=-1)
 
 
 def gradcam(bundle, tensor: torch.Tensor, class_idx: int | None = None) -> np.ndarray:
-    """Kembalikan heatmap 0..1 berukuran sama dengan input (H x W)."""
     model = bundle.model
     layer = model.blocks[-1]
     store = {}
@@ -50,5 +47,4 @@ def overlay(bundle, tensor: torch.Tensor, heat: np.ndarray, alpha: float = 0.45)
 
 
 def model_view(bundle, tensor: torch.Tensor) -> Image.Image:
-    """Potongan 224x224 yang benar-benar dilihat model (setelah resize + center crop)."""
     return Image.fromarray((denormalize(bundle, tensor) * 255).astype(np.uint8))

@@ -1,7 +1,5 @@
-"""Angka evaluasi yang disalin dari notebook TUBES_DL (test set 1.707 gambar). Sumber: bagian 7.1–7.5."""
 import pandas as pd
 
-# Tabel 4 (7.1b): rerata ± std 3 seed
 TABLE4 = pd.DataFrame([
     dict(Model="M0 Baseline non-DL (HOG + LogReg)", **{"Macro F1": "0,491", "Akurasi": "0,647", "Precision": "0,474",
          "Recall": "0,523", "F1 Rusak": "0,418", "Param (juta)": "0,005", "Inferensi (ms)": "–"}),
@@ -18,7 +16,6 @@ MACRO_F1_BARS = pd.DataFrame(dict(
     mean=[0.491, 0.569, 0.801], std=[0.0, 0.032, 0.012],
 ))
 
-# Classification report model yang di-deploy (M2 seed 42), 7.2
 CLASS_REPORT = pd.DataFrame({
     "Kelas": ["Aman", "Rusak", "Lainnya"],
     "Precision": [0.8952, 0.7694, 0.7647],
@@ -27,16 +24,12 @@ CLASS_REPORT = pd.DataFrame({
     "Jumlah (test)": [1238, 409, 60],
 })
 
-# Confusion matrix M2 seed 42 (baris = label sebenarnya, kolom = prediksi), urutan Aman, Rusak, Lainnya.
-# Diturunkan dari tabel kesalahan di 7.8 (Aman→Rusak 82, Aman→Lainnya 11, Rusak→Aman 127, Rusak→Lainnya 5,
-# Lainnya→Aman 7, Lainnya→Rusak 1) dan jumlah per kelas; cocok dengan recall di classification report.
 CONFUSION = [
     [1145, 82, 11],
     [127, 277, 5],
     [7, 1, 52],
 ]
 
-# Ablasi (7.1c), seed 42
 ABLATION = pd.DataFrame([
     ("M2 lengkap", 0.8142, 0.0),
     ("Tanpa augmentasi", 0.8052, -0.0091),
@@ -45,12 +38,10 @@ ABLATION = pd.DataFrame([
     ("Tanpa pretrained (dari nol)", 0.5655, -0.2487),
 ], columns=["Eksperimen", "Macro F1", "Δ vs M2"])
 
-# Ketahanan JPEG (7.5), M2 seed 42
 JPEG = pd.DataFrame(dict(kualitas=["asli", "90", "70", "50", "30", "15"],
                          m2=[0.8142, 0.8143, 0.8041, 0.8040, 0.8132, 0.7904],
                          m1=[0.5478, 0.5453, 0.5463, 0.5460, 0.5478, 0.5385]))
 
-# Titik operasi human-in-the-loop (7.3–7.4)
 OPERATING_POINTS = pd.DataFrame([
     dict(skenario="Manual 100% (kondisi sekarang)", threshold="–", coverage=0.0, akurasi_otomatis=None, biaya=5_000),
     dict(skenario="Otomasi penuh (semua diputus model)", threshold="0,00", coverage=1.0, akurasi_otomatis=0.8635, biaya=16_186),

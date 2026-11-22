@@ -1,10 +1,3 @@
-"""Load model MobileNetV3 terbaik dan jalankan prediksi.
-
-Preprocessing di sini meniru persis pipeline evaluasi di notebook (TUBES_DL, bagian 4.5 dan 4.9):
-  buka gambar -> EXIF transpose -> transparan ditempel di latar putih -> RGB
-  -> resize sisi pendek 256 px (bicubic, hanya jika lebih besar)
-  -> Resize(255) -> CenterCrop(224) -> skala 0..1 -> normalisasi ImageNet
-"""
 from __future__ import annotations
 
 import io
@@ -24,8 +17,8 @@ torch.set_num_threads(max(1, torch.get_num_threads()))
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = ROOT / "models" / "model_terbaik_m2_mobilenetv3.pt"
 
-LOW_RES_SHORT_SIDE = 200   # sama dengan definisi "resolusi rendah" di notebook 7.6
-NOISE_THRESHOLD = 0.04     # sama dengan notebook 4.8b (estimasi sigma metode Immerkaer)
+LOW_RES_SHORT_SIDE = 200
+NOISE_THRESHOLD = 0.04
 
 
 @dataclass
@@ -42,7 +35,6 @@ class Bundle:
 
 
 def load_bundle(path: Path = MODEL_PATH) -> Bundle:
-    """Bangun arsitektur dari timm (tanpa download bobot) lalu isi dengan bobot hasil training."""
     if not path.exists():
         raise FileNotFoundError(
             f"File model tidak ditemukan: {path}. Jalankan `python scripts/pack_model.py` terlebih dahulu."
@@ -72,9 +64,7 @@ def load_bundle(path: Path = MODEL_PATH) -> Bundle:
     return b
 
 
-# ---------------------------------------------------------------- preprocessing
 def load_rgb(src) -> Image.Image:
-    """Buka gambar apa pun (path / bytes / file upload) -> RGB, orientasi EXIF benar, transparan di atas putih."""
     if isinstance(src, (bytes, bytearray)):
         src = io.BytesIO(src)
     img = ImageOps.exif_transpose(Image.open(src))
@@ -95,12 +85,10 @@ def resize_short_side(img: Image.Image, short: int) -> Image.Image:
 
 
 def noise_sigma(img: Image.Image) -> float:
-    """Estimasi std noise (Immerkaer 1996) pada gambar grayscale 0..1, versi numpy dari notebook 4.8b."""
     g = np.asarray(img.convert("L"), dtype=np.float32) / 255.0
     h, w = g.shape
     if h < 3 or w < 3:
         return 0.0
-    # konvolusi dengan mask [[1,-2,1],[-2,4,-2],[1,-2,1]] memakai slicing (bagian dalam saja)
     c = (g[:-2, :-2] - 2 * g[:-2, 1:-1] + g[:-2, 2:]
          - 2 * g[1:-1, :-2] + 4 * g[1:-1, 1:-1] - 2 * g[1:-1, 2:]
          + g[2:, :-2] - 2 * g[2:, 1:-1] + g[2:, 2:])
@@ -109,9 +97,9 @@ def noise_sigma(img: Image.Image) -> float:
 
 @dataclass
 class Prepared:
-    original: Image.Image      # gambar RGB asli (untuk ditampilkan)
-    small: Image.Image         # setelah resize sisi pendek 256 (input ke transform)
-    tensor: torch.Tensor       # 3 x 224 x 224, sudah dinormalisasi
+    original: Image.Image
+    small: Image.Image
+    tensor: torch.Tensor
     width: int
     height: int
     noise: float
@@ -136,7 +124,6 @@ def prepare(bundle: Bundle, src) -> Prepared:
                     width=img.width, height=img.height, noise=noise_sigma(small))
 
 
-# ---------------------------------------------------------------- inference
 @dataclass
 class Prediction:
     label: str
